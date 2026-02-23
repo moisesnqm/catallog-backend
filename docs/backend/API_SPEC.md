@@ -29,13 +29,13 @@ The frontend uses this to know the current user's **role** and **tenantId** from
 {
   "role": "admin",
   "tenantId": "uuid",
-  "tenantName": "Minha Empresa"
+  "tenantName": "Nome da Empresa"
 }
 ```
 
 - `role`: one of `"admin"`, `"manager"`, `"viewer"`.
 - `tenantId`: UUID of the tenant the user belongs to.
-- `tenantName`: (optional) display name of the tenant from the `tenants` table.
+- `tenantName`: (optional) Display name of the tenant for the sidebar/UI.
 
 - **Errors:** `401 Unauthorized` (invalid or missing token), `404 Not Found` (user not found in your `users` table for this Clerk `sub`).
 
@@ -50,6 +50,7 @@ The frontend uses this to know the current user's **role** and **tenantId** from
 - **Headers:** `Authorization: Bearer <clerk_jwt>`
 - **Query parameters (optional):**
   - `sector` (string): filter by sector
+  - `q` (string): full-text search over the catalog's extracted text (searchableText); implementation is backend-specific (e.g. PostgreSQL `to_tsvector`).
   - `page` (number): 1-based page for pagination
   - `limit` (number): items per page (e.g. default 20)
 
@@ -68,6 +69,7 @@ The frontend uses this to know the current user's **role** and **tenantId** from
       "fileUrl": "string | null",
       "fileName": "string | null",
       "mimeType": "string | null",
+      "searchableText": "string | null",
       "createdAt": "ISO8601 datetime string"
     }
   ],
@@ -91,6 +93,12 @@ The frontend uses this to know the current user's **role** and **tenantId** from
   - `name` (optional): display name
   - `sector` (optional): sector label
 
+**Backend behavior**
+
+- Upload the PDF to **AWS S3** (or configured object storage); obtain the object URL.
+- Store the **object URL** in the database (exposed as `fileUrl` in the API response).
+- Extract the PDF text on the server (e.g. with a library such as `pdf-parse` in Node) and persist it in a `searchable_text`-style column for later full-text search.
+
 **Response**
 
 - **Status:** `201 Created` (or `200 OK` with created resource)
@@ -104,9 +112,12 @@ The frontend uses this to know the current user's **role** and **tenantId** from
   "fileUrl": "https://...",
   "fileName": "string",
   "mimeType": "application/pdf",
+  "searchableText": "string | null",
   "createdAt": "ISO8601 datetime string"
 }
 ```
+
+- `searchableText`: (optional) Text extracted from the PDF for search indexing; may be omitted or null if extraction is not yet implemented or fails.
 
 - **Errors:**
   - `400 Bad Request`: invalid or missing file, wrong type
@@ -163,6 +174,7 @@ interface Catalogo {
   fileUrl: string | null;
   fileName: string | null;
   mimeType: string | null;
+  searchableText?: string | null;
   createdAt: string; // ISO8601
 }
 
@@ -180,4 +192,4 @@ If the frontend is served from a different origin than the API, enable CORS for 
 
 - Use **Fastify** (or Express) with a **Zod**-validated body/query.
 - Validate Clerk JWT using Clerk's JWKS endpoint or server-side SDK; read `sub` (user id) and custom claims (e.g. `tenant_id`, `role`).
-- Store uploaded files in object storage (e.g. S3); save `fileUrl` (or storage key) and metadata in the database per tenant.
+- Store uploaded files in **AWS S3** (or equivalent object storage); save the object **URL** as `fileUrl` and metadata in the database per tenant. Extract PDF text on upload and store it (e.g. in `searchable_text`) for full-text search via the optional `q` query parameter on list.

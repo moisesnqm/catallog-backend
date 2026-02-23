@@ -34,8 +34,14 @@ export class Catalogo {
   @Column({ type: 'varchar', length: 255 })
   file_name!: string;
 
-  @Column({ type: 'varchar', length: 512 })
-  file_path!: string;
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  file_path!: string | null;
+
+  @Column({ type: 'varchar', length: 1024, nullable: true })
+  file_url!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  searchable_text!: string | null;
 
   @Column({ type: 'varchar', length: 100, default: 'application/pdf' })
   mime_type!: string;

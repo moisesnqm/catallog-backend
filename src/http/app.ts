@@ -16,6 +16,7 @@ import { ListCatalogosUseCaseImpl } from '../use-cases/list-catalogos.js';
 import { GetCatalogoUseCaseImpl } from '../use-cases/get-catalogo.js';
 import { UploadCatalogoUseCaseImpl } from '../use-cases/upload-catalogo.js';
 import { GetCatalogoDownloadUseCaseImpl } from '../use-cases/get-catalogo-download.js';
+import { DeleteCatalogoUseCaseImpl } from '../use-cases/delete-catalogo.js';
 import { registerCatalogosRoutes } from './routes/catalogos.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { registerWebhookRoutes } from './routes/webhooks.js';
@@ -69,6 +70,7 @@ export async function buildApp(): Promise<App> {
   const getCatalogo = new GetCatalogoUseCaseImpl(catalogoRepository);
   const uploadCatalogo = new UploadCatalogoUseCaseImpl(catalogoRepository);
   const getCatalogoDownload = new GetCatalogoDownloadUseCaseImpl(catalogoRepository);
+  const deleteCatalogo = new DeleteCatalogoUseCaseImpl(catalogoRepository);
 
   await registerMeRoutes(app, { env: config, userRepository, tenantRepository });
 
@@ -79,6 +81,7 @@ export async function buildApp(): Promise<App> {
     getCatalogo,
     uploadCatalogo,
     getCatalogoDownload,
+    deleteCatalogo,
   });
 
   await registerAdminRoutes(app, { env: config, userRepository });

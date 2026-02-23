@@ -1,5 +1,5 @@
 /**
- * Catalogos routes: list, get, upload, download.
+ * Catalogos routes: list, get, upload, download, delete.
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
@@ -8,11 +8,15 @@ import type { ListCatalogosUseCase } from '../../use-cases/list-catalogos.js';
 import type { GetCatalogoUseCase } from '../../use-cases/get-catalogo.js';
 import type { UploadCatalogoUseCase } from '../../use-cases/upload-catalogo.js';
 import type { GetCatalogoDownloadUseCase } from '../../use-cases/get-catalogo-download.js';
+import type { DeleteCatalogoUseCase } from '../../use-cases/delete-catalogo.js';
 import { listCatalogosQuerySchema } from '../../schemas/catalogo.js';
 import { createAuthMiddleware, requireUploadRole } from '../../auth/middleware.js';
 import type { UserRepository } from '../../repositories/user.repository.js';
 import type { Env } from '../../config/env.js';
+import { isS3Configured } from '../../config/env.js';
 import { saveUploadedFile, resolveFilePath } from '../storage.js';
+import { uploadCatalogPdf } from '../../storage/s3.js';
+import { extractTextFromPdf } from '../../services/pdf-extract.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -23,6 +27,7 @@ interface CatalogosRoutesDeps {
   getCatalogo: GetCatalogoUseCase;
   uploadCatalogo: UploadCatalogoUseCase;
   getCatalogoDownload: GetCatalogoDownloadUseCase;
+  deleteCatalogo: DeleteCatalogoUseCase;
 }
 
 export async function registerCatalogosRoutes(
@@ -39,11 +44,11 @@ export async function registerCatalogosRoutes(
 
   /** GET /catalogos */
   app.get<{
-    Querystring: { sector?: string; page?: string; limit?: string };
+    Querystring: { sector?: string; q?: string; page?: string; limit?: string };
   }>(
     '/catalogos',
     { preHandler: [authMiddleware] },
-    async (request: FastifyRequest<{ Querystring: { sector?: string; page?: string; limit?: string } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Querystring: { sector?: string; q?: string; page?: string; limit?: string } }>, reply: FastifyReply) => {
       const parsed = listCatalogosQuerySchema.safeParse(request.query);
       if (!parsed.success) {
         await reply.status(422).send({ error: 'Validation failed', details: parsed.error.flatten() });
@@ -120,21 +125,55 @@ export async function registerCatalogosRoutes(
       const displayName = name || originalFilename;
       const sector = sectorRaw === '' ? null : sectorRaw ?? null;
 
-      let filePath: string;
+      let filePath: string | null = null;
       let fileName: string;
-      try {
-        const saved = await saveUploadedFile(
-          deps.env.UPLOAD_STORAGE_PATH,
-          auth.tenantId,
-          buffer,
-          mimeType
-        );
-        filePath = saved.filePath;
-        fileName = saved.fileName;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Upload failed';
-        await reply.status(422).send({ error: msg });
-        return;
+      let fileUrl: string | null = null;
+      let searchableText = '';
+
+      const s3Configured = isS3Configured(deps.env);
+
+      if (s3Configured && deps.env.AWS_REGION && deps.env.S3_BUCKET && deps.env.AWS_ACCESS_KEY_ID && deps.env.AWS_SECRET_ACCESS_KEY) {
+        try {
+          const [s3Result, extracted] = await Promise.all([
+            uploadCatalogPdf(
+              {
+                region: deps.env.AWS_REGION,
+                bucket: deps.env.S3_BUCKET,
+                prefix: deps.env.S3_PREFIX ?? 'catalogos',
+                accessKeyId: deps.env.AWS_ACCESS_KEY_ID,
+                secretAccessKey: deps.env.AWS_SECRET_ACCESS_KEY,
+              },
+              auth.tenantId,
+              buffer
+            ),
+            extractTextFromPdf(buffer),
+          ]);
+          fileUrl = s3Result.fileUrl;
+          fileName = s3Result.fileName;
+          filePath = s3Result.fileKey;
+          searchableText = extracted;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'S3 upload failed';
+          request.log?.warn?.({ err }, 'S3 upload failed');
+          await reply.status(422).send({ error: msg });
+          return;
+        }
+      } else {
+        try {
+          const saved = await saveUploadedFile(
+            deps.env.UPLOAD_STORAGE_PATH,
+            auth.tenantId,
+            buffer,
+            mimeType
+          );
+          filePath = saved.filePath;
+          fileName = saved.fileName;
+          searchableText = await extractTextFromPdf(buffer);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Upload failed';
+          await reply.status(422).send({ error: msg });
+          return;
+        }
       }
 
       try {
@@ -145,6 +184,8 @@ export async function registerCatalogosRoutes(
           fileName,
           filePath,
           mimeType,
+          fileUrl: fileUrl ?? undefined,
+          searchableText: searchableText || null,
           baseUrl: deps.env.API_PUBLIC_URL,
         });
         await reply.status(201).send(result);
@@ -155,6 +196,25 @@ export async function registerCatalogosRoutes(
         }
         throw err;
       }
+    }
+  );
+
+  /** DELETE /catalogos/:id — admin or manager only, tenant-scoped. */
+  app.delete<{ Params: { id: string } }>(
+    '/catalogos/:id',
+    { preHandler: [authMiddleware] },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      if (!requireUploadRole(request, reply)) {
+        return;
+      }
+      const { id } = request.params;
+      const auth = request.auth!;
+      const deleted = await deps.deleteCatalogo.execute({ auth, id });
+      if (!deleted) {
+        await reply.status(404).send({ error: 'Not found' });
+        return;
+      }
+      await reply.status(204).send();
     }
   );
 
@@ -171,7 +231,18 @@ export async function registerCatalogosRoutes(
         return;
       }
 
-      const absolutePath = resolveFilePath(deps.env.UPLOAD_STORAGE_PATH, download.filePath);
+      if (download.fileUrl) {
+        await reply.redirect(download.fileUrl, 302);
+        return;
+      }
+
+      const filePath = download.filePath;
+      if (filePath == null || filePath === '') {
+        await reply.status(404).send({ error: 'File not found' });
+        return;
+      }
+
+      const absolutePath = resolveFilePath(deps.env.UPLOAD_STORAGE_PATH, filePath);
       if (!fs.existsSync(absolutePath)) {
         await reply.status(404).send({ error: 'File not found' });
         return;

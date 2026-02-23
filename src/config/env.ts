@@ -44,9 +44,30 @@ const envSchema = z.object({
 
   /** Public API base URL for building fileUrl in responses (e.g. https://api.example.com). */
   API_PUBLIC_URL: z.string().url().optional(),
+
+  /** AWS S3 (optional). When set, catalog PDFs are uploaded to S3 instead of local disk. */
+  AWS_REGION: z.string().min(1).transform((s) => s.trim()).optional(),
+  AWS_ACCESS_KEY_ID: z.string().min(1).transform((s) => s.trim()).optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1).transform((s) => s.trim()).optional(),
+  /** S3 bucket name only (e.g. "my-catalog-bucket"), not a URL or s3:// URI. */
+  S3_BUCKET: z.string().min(1).transform((s) => s.trim()).optional(),
+  /** Prefix for object keys (e.g. "catalogos"). */
+  S3_PREFIX: z.string().default('catalogos'),
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+/**
+ * Returns true when S3 is configured (region, bucket, and credentials present).
+ */
+export function isS3Configured(env: Env): boolean {
+  return Boolean(
+    env.AWS_REGION &&
+      env.S3_BUCKET &&
+      env.AWS_ACCESS_KEY_ID &&
+      env.AWS_SECRET_ACCESS_KEY
+  );
+}
 
 /**
  * Loads and validates environment variables.

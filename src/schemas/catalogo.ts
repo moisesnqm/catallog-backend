@@ -7,6 +7,7 @@ import { SECTOR_VALUES } from './sector.js';
 
 export const listCatalogosQuerySchema = z.object({
   sector: z.string().max(100).optional(),
+  q: z.string().max(500).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -23,6 +24,7 @@ export const catalogoResponseSchema = z.object({
   fileUrl: z.string().nullable(),
   fileName: z.string().nullable(),
   mimeType: z.string().nullable(),
+  searchableText: z.string().nullable().optional(),
   createdAt: z.string(),
 });
 export type CatalogoResponse = z.infer<typeof catalogoResponseSchema>;

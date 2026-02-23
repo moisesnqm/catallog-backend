@@ -10,6 +10,8 @@ export interface ListCatalogosOptions {
   tenantId: string;
   sectorAccess: SectorAccess;
   querySector?: string | null;
+  /** Full-text search over searchable_text (PostgreSQL plainto_tsquery). */
+  queryText?: string | null;
   page: number;
   limit: number;
 }
@@ -26,7 +28,10 @@ export interface CatalogoRepository {
     tenantId: string,
     sectorAccess: SectorAccess
   ): Promise<Catalogo | null>;
+  /** Finds a catalogo by id and tenant (no sector filter). Used for delete by admin/manager. */
+  findByIdAndTenant(id: string, tenantId: string): Promise<Catalogo | null>;
   save(catalogo: Catalogo): Promise<Catalogo>;
+  remove(catalogo: Catalogo): Promise<Catalogo>;
 }
 
 export class CatalogoRepositoryImpl implements CatalogoRepository {
@@ -37,7 +42,7 @@ export class CatalogoRepositoryImpl implements CatalogoRepository {
   }
 
   async findByTenantAndSectorAccess(options: ListCatalogosOptions): Promise<ListCatalogosResult> {
-    const { tenantId, sectorAccess, querySector, page, limit } = options;
+    const { tenantId, sectorAccess, querySector, queryText, page, limit } = options;
 
     if (sectorAccess === 'none') {
       return { items: [], total: 0 };
@@ -53,6 +58,13 @@ export class CatalogoRepositoryImpl implements CatalogoRepository {
 
     if (querySector != null && querySector !== '') {
       qb.andWhere('c.sector = :querySector', { querySector });
+    }
+
+    if (queryText != null && queryText.trim() !== '') {
+      qb.andWhere(
+        `to_tsvector('portuguese', COALESCE(c.searchable_text, '')) @@ plainto_tsquery('portuguese', :queryText)`,
+        { queryText: queryText.trim() }
+      );
     }
 
     const [items, total] = await qb
@@ -86,7 +98,22 @@ export class CatalogoRepositoryImpl implements CatalogoRepository {
     return catalogo ?? null;
   }
 
+  /**
+   * Finds a catalogo by id and tenant only (no sector_access filter).
+   * Used for delete: admin/manager can delete any catalogo of their tenant.
+   */
+  async findByIdAndTenant(id: string, tenantId: string): Promise<Catalogo | null> {
+    const catalogo = await this.repo.findOne({
+      where: { id, tenant_id: tenantId },
+    });
+    return catalogo ?? null;
+  }
+
   async save(catalogo: Catalogo): Promise<Catalogo> {
     return this.repo.save(catalogo);
+  }
+
+  async remove(catalogo: Catalogo): Promise<Catalogo> {
+    return this.repo.remove(catalogo);
   }
 }

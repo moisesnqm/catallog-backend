@@ -28,7 +28,26 @@ describe('ListCatalogosUseCase', () => {
   it('returns empty list when sector_access is none (repo returns empty)', async () => {
     const repo = {
       findByTenantAndSectorAccess: vi.fn().mockImplementation((opts: { sectorAccess: string }) =>
-        Promise.resolve(opts.sectorAccess === 'none' ? { items: [], total: 0 } : { items: [{ id: '1', name: 'x', sector: 'vendas', file_name: 'a', file_path: '/p', mime_type: 'application/pdf', created_at: new Date() }], total: 1 })
+        Promise.resolve(
+          opts.sectorAccess === 'none'
+            ? { items: [], total: 0 }
+            : {
+                items: [
+                  {
+                    id: '1',
+                    name: 'x',
+                    sector: 'vendas',
+                    file_name: 'a',
+                    file_path: '/p',
+                    file_url: null,
+                    searchable_text: null,
+                    mime_type: 'application/pdf',
+                    created_at: new Date(),
+                  },
+                ],
+                total: 1,
+              }
+        )
       ),
     } as unknown as CatalogoRepository;
     const useCase = new ListCatalogosUseCaseImpl(repo);
@@ -52,7 +71,17 @@ describe('ListCatalogosUseCase', () => {
 
   it('returns items when sector_access is all', async () => {
     const items = [
-      { id: '1', name: 'Cat 1', sector: 'vendas', file_name: 'f.pdf', file_path: '/p/1', mime_type: 'application/pdf', created_at: new Date() },
+      {
+        id: '1',
+        name: 'Cat 1',
+        sector: 'vendas',
+        file_name: 'f.pdf',
+        file_path: '/p/1',
+        file_url: null,
+        searchable_text: null,
+        mime_type: 'application/pdf',
+        created_at: new Date(),
+      },
     ];
     const repo = createMockRepo({ items, total: 1 });
     const useCase = new ListCatalogosUseCaseImpl(repo);
@@ -84,6 +113,25 @@ describe('ListCatalogosUseCase', () => {
         querySector: 'financeiro',
         page: 1,
         limit: 10,
+      })
+    );
+  });
+
+  it('passes q as queryText to repository for full-text search', async () => {
+    const repo = createMockRepo({ items: [], total: 0 });
+    const useCase = new ListCatalogosUseCaseImpl(repo);
+
+    await useCase.execute({
+      auth: auth({ sectorAccess: 'all' }),
+      query: { q: 'palavra chave', page: 1, limit: 20 },
+    });
+
+    expect(repo.findByTenantAndSectorAccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-uuid',
+        queryText: 'palavra chave',
+        page: 1,
+        limit: 20,
       })
     );
   });

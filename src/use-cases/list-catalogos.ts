@@ -9,10 +9,21 @@ import { sectorAccessSchema } from '../schemas/sector.js';
 import type { CatalogosListResponse, CatalogoResponse } from '../schemas/catalogo.js';
 
 function toResponse(
-  c: { id: string; name: string; sector: string | null; file_name: string; file_path: string; mime_type: string; created_at: Date },
+  c: {
+    id: string;
+    name: string;
+    sector: string | null;
+    file_name: string;
+    file_path: string | null;
+    file_url: string | null;
+    searchable_text: string | null;
+    mime_type: string;
+    created_at: Date;
+  },
   baseUrl?: string
 ): CatalogoResponse {
-  const fileUrl = baseUrl ? `${baseUrl.replace(/\/$/, '')}/catalogos/${c.id}/download` : null;
+  const fileUrl =
+    c.file_url ?? (baseUrl ? `${baseUrl.replace(/\/$/, '')}/catalogos/${c.id}/download` : null);
   return {
     id: c.id,
     name: c.name,
@@ -20,6 +31,7 @@ function toResponse(
     fileUrl,
     fileName: c.file_name || null,
     mimeType: c.mime_type || null,
+    searchableText: c.searchable_text ?? null,
     createdAt: c.created_at.toISOString(),
   };
 }
@@ -46,6 +58,7 @@ export class ListCatalogosUseCaseImpl implements ListCatalogosUseCase {
       tenantId: auth.tenantId,
       sectorAccess,
       querySector: query.sector,
+      queryText: query.q,
       page: query.page,
       limit: query.limit,
     });

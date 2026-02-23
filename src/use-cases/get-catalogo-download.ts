@@ -12,7 +12,10 @@ export interface GetCatalogoDownloadInput {
 }
 
 export interface GetCatalogoDownloadResult {
-  filePath: string;
+  /** When set, client should redirect to this URL (S3). */
+  fileUrl?: string | null;
+  /** Local path for streaming when fileUrl is not set. */
+  filePath?: string | null;
   fileName: string;
   mimeType: string;
 }
@@ -36,6 +39,14 @@ export class GetCatalogoDownloadUseCaseImpl implements GetCatalogoDownloadUseCas
 
     if (!catalogo) {
       return null;
+    }
+
+    if (catalogo.file_url) {
+      return {
+        fileUrl: catalogo.file_url,
+        fileName: catalogo.file_name,
+        mimeType: catalogo.mime_type,
+      };
     }
 
     return {
