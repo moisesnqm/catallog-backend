@@ -12,6 +12,14 @@ export interface ListCatalogosOptions {
   querySector?: string | null;
   /** Full-text search over searchable_text (PostgreSQL plainto_tsquery). */
   queryText?: string | null;
+  /** Partial match on catalog name (case-insensitive ILIKE). */
+  queryName?: string | null;
+  /** Exact match on MIME type. */
+  queryMimeType?: string | null;
+  /** Catalogs created on or after this date. */
+  createdFrom?: Date | null;
+  /** Catalogs created on or before this date. */
+  createdTo?: Date | null;
   page: number;
   limit: number;
 }
@@ -42,7 +50,18 @@ export class CatalogoRepositoryImpl implements CatalogoRepository {
   }
 
   async findByTenantAndSectorAccess(options: ListCatalogosOptions): Promise<ListCatalogosResult> {
-    const { tenantId, sectorAccess, querySector, queryText, page, limit } = options;
+    const {
+      tenantId,
+      sectorAccess,
+      querySector,
+      queryText,
+      queryName,
+      queryMimeType,
+      createdFrom,
+      createdTo,
+      page,
+      limit,
+    } = options;
 
     if (sectorAccess === 'none') {
       return { items: [], total: 0 };
@@ -65,6 +84,27 @@ export class CatalogoRepositoryImpl implements CatalogoRepository {
         `to_tsvector('portuguese', COALESCE(c.searchable_text, '')) @@ plainto_tsquery('portuguese', :queryText)`,
         { queryText: queryText.trim() }
       );
+    }
+
+    if (queryName != null && queryName.trim() !== '') {
+      const escaped = queryName
+        .trim()
+        .replace(/\\/g, '\\\\')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_');
+      qb.andWhere("c.name ILIKE :queryName ESCAPE '\\'", { queryName: `%${escaped}%` });
+    }
+
+    if (queryMimeType != null && queryMimeType !== '') {
+      qb.andWhere('c.mime_type = :queryMimeType', { queryMimeType });
+    }
+
+    if (createdFrom != null) {
+      qb.andWhere('c.created_at >= :createdFrom', { createdFrom });
+    }
+
+    if (createdTo != null) {
+      qb.andWhere('c.created_at <= :createdTo', { createdTo });
     }
 
     const [items, total] = await qb

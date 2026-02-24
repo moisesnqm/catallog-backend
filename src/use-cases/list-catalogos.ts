@@ -59,6 +59,10 @@ export class ListCatalogosUseCaseImpl implements ListCatalogosUseCase {
       sectorAccess,
       querySector: query.sector,
       queryText: query.q,
+      queryName: query.name,
+      queryMimeType: query.mimeType,
+      createdFrom: query.createdFrom,
+      createdTo: query.createdTo,
       page: query.page,
       limit: query.limit,
     });

@@ -8,6 +8,14 @@ import { SECTOR_VALUES } from './sector.js';
 export const listCatalogosQuerySchema = z.object({
   sector: z.string().max(100).optional(),
   q: z.string().max(500).optional(),
+  /** Partial match on catalog name (case-insensitive). */
+  name: z.string().max(255).optional(),
+  /** Filter by MIME type (e.g. application/pdf). */
+  mimeType: z.string().max(100).optional(),
+  /** Filter catalogs created on or after this date (ISO 8601 date or datetime). */
+  createdFrom: z.coerce.date().optional(),
+  /** Filter catalogs created on or before this date (ISO 8601 date or datetime). */
+  createdTo: z.coerce.date().optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });

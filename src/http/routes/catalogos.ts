@@ -42,13 +42,36 @@ export async function registerCatalogosRoutes(
     },
   });
 
-  /** GET /catalogos */
+  /** GET /catalogos — list with optional filters: sector, q, name, mimeType, createdFrom, createdTo, page, limit */
   app.get<{
-    Querystring: { sector?: string; q?: string; page?: string; limit?: string };
+    Querystring: {
+      sector?: string;
+      q?: string;
+      name?: string;
+      mimeType?: string;
+      createdFrom?: string;
+      createdTo?: string;
+      page?: string;
+      limit?: string;
+    };
   }>(
     '/catalogos',
     { preHandler: [authMiddleware] },
-    async (request: FastifyRequest<{ Querystring: { sector?: string; q?: string; page?: string; limit?: string } }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{
+        Querystring: {
+          sector?: string;
+          q?: string;
+          name?: string;
+          mimeType?: string;
+          createdFrom?: string;
+          createdTo?: string;
+          page?: string;
+          limit?: string;
+        };
+      }>,
+      reply: FastifyReply
+    ) => {
       const parsed = listCatalogosQuerySchema.safeParse(request.query);
       if (!parsed.success) {
         await reply.status(422).send({ error: 'Validation failed', details: parsed.error.flatten() });
