@@ -11,6 +11,7 @@
     "typeorm": "typeorm-ts-node-esm",
     "migration:generate": "typeorm-ts-node-esm -d src/database/data-source.ts migration:generate",
     "migration:run": "tsx src/database/run-migrations.ts",
+    "migration:run:prod": "node dist/database/run-migrations.js",
     "migration:revert": "tsx src/database/revert-migration.ts",
     "test": "vitest run",
     "test:watch": "vitest"
