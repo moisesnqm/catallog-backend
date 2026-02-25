@@ -93,9 +93,7 @@ Full steps (create user in DB, get Clerk User ID, update role): [docs/backend/US
 
 Use Environment Variables in Coolify (no `.env` file in the container). Set at least `DATABASE_URL`, `NODE_ENV=production`, and Clerk/AWS vars as needed.
 
-### 1. Create the database `catallog`
-
-If the Coolify Postgres was created without a database named `catallog`, create it:
+On every container start, the **entrypoint** automatically: (1) creates the database from `DATABASE_URL` if it does not exist (connects to default `postgres` to run `CREATE DATABASE`); (2) runs migrations; (3) starts the app. You can deploy when the database does not exist yet. If Postgres is not ready, the entrypoint retries up to 30 times (`STARTUP_MAX_TRIES`, `STARTUP_SLEEP`). Manual alternatives (if you prefer not to use the entrypoint):
 
 - **Option A — Coolify console:** Open the Postgres service in Coolify and use “Execute Command” or “Terminal” (if available). Then run:
   ```bash
