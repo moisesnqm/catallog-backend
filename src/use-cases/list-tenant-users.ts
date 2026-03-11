@@ -10,6 +10,8 @@ export interface ListTenantUsersResultItem {
   id: string;
   clerk_user_id: string;
   tenant_id: string;
+  /** Email when available (e.g. stored on link by email); null for users created before or via webhook. */
+  email: string | null;
   role: string;
   sector_access: string;
   created_at: string;
@@ -38,6 +40,7 @@ function toResultItem(user: User): ListTenantUsersResultItem {
     id: user.id,
     clerk_user_id: user.clerk_user_id,
     tenant_id: user.tenant_id,
+    email: user.email ?? null,
     role: user.role,
     sector_access: user.sector_access,
     created_at: user.created_at.toISOString(),

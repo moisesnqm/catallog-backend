@@ -28,6 +28,9 @@ export class User {
   @Column({ type: 'varchar', length: 255 })
   clerk_user_id!: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  email!: string | null;
+
   @Column({ type: 'varchar', length: 50 })
   role!: string;
 

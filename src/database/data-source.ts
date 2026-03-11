@@ -15,6 +15,7 @@ import { CreateUsers1730000000002 } from './migrations/1730000000002-CreateUsers
 import { CreateCatalogos1730000000003 } from './migrations/1730000000003-CreateCatalogos.js';
 import { AddCatalogoFileUrlAndSearchableText1730000000004 } from './migrations/1730000000004-AddCatalogoFileUrlAndSearchableText.js';
 import { CreateCatalogAreasAndAddAreaIdToCatalogos1730000000005 } from './migrations/1730000000005-CreateCatalogAreasAndAddAreaIdToCatalogos.js';
+import { AddEmailToUsers1730000000006 } from './migrations/1730000000006-AddEmailToUsers.js';
 
 const env = loadEnv();
 
@@ -30,6 +31,7 @@ export const AppDataSource = new DataSource({
     CreateCatalogos1730000000003,
     AddCatalogoFileUrlAndSearchableText1730000000004,
     CreateCatalogAreasAndAddAreaIdToCatalogos1730000000005,
+    AddEmailToUsers1730000000006,
   ],
   migrationsTableName: 'migrations',
 });

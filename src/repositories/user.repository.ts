@@ -13,6 +13,8 @@ export interface UpdateUserRoleInput {
 export interface CreateUserInput {
   tenant_id: string;
   clerk_user_id: string;
+  /** Email stored for display in admin list (e.g. when linking by email). */
+  email?: string | null;
   role?: string;
   sector_access?: string;
 }
@@ -41,7 +43,7 @@ export class UserRepositoryImpl implements UserRepository {
   async findByClerkUserId(clerkUserId: string): Promise<User | null> {
     const user = await this.repo.findOne({
       where: { clerk_user_id: clerkUserId },
-      select: ['id', 'tenant_id', 'clerk_user_id', 'role', 'sector_access'],
+      select: ['id', 'tenant_id', 'clerk_user_id', 'email', 'role', 'sector_access'],
     });
     return user ?? null;
   }
@@ -52,7 +54,7 @@ export class UserRepositoryImpl implements UserRepository {
   async findByClerkUserIdAndTenant(clerkUserId: string, tenantId: string): Promise<User | null> {
     const user = await this.repo.findOne({
       where: { clerk_user_id: clerkUserId, tenant_id: tenantId },
-      select: ['id', 'tenant_id', 'clerk_user_id', 'role', 'sector_access'],
+      select: ['id', 'tenant_id', 'clerk_user_id', 'email', 'role', 'sector_access'],
     });
     return user ?? null;
   }
@@ -63,7 +65,7 @@ export class UserRepositoryImpl implements UserRepository {
   async findByTenant(tenantId: string): Promise<User[]> {
     return this.repo.find({
       where: { tenant_id: tenantId },
-      select: ['id', 'tenant_id', 'clerk_user_id', 'role', 'sector_access', 'created_at'],
+      select: ['id', 'tenant_id', 'clerk_user_id', 'email', 'role', 'sector_access', 'created_at'],
       order: { created_at: 'ASC' },
     });
   }
@@ -88,6 +90,7 @@ export class UserRepositoryImpl implements UserRepository {
     const user = new User();
     user.tenant_id = data.tenant_id;
     user.clerk_user_id = data.clerk_user_id;
+    user.email = data.email ?? null;
     user.role = data.role ?? 'viewer';
     user.sector_access = data.sector_access ?? 'all';
     return this.repo.save(user);

@@ -20,6 +20,7 @@ export interface LinkUserToTenantResult {
   id: string;
   clerk_user_id: string;
   tenant_id: string;
+  email: string | null;
   role: string;
   sector_access: string;
 }
@@ -56,6 +57,7 @@ export class LinkUserToTenantUseCaseImpl implements LinkUserToTenantUseCase {
     const user = await this.userRepository.createUser({
       tenant_id: auth.tenantId,
       clerk_user_id: clerkUser.id,
+      email,
       role: role ?? 'viewer',
       sector_access: sector_access ?? 'all',
     });
@@ -68,6 +70,7 @@ function toResult(user: User): LinkUserToTenantResult {
     id: user.id,
     clerk_user_id: user.clerk_user_id,
     tenant_id: user.tenant_id,
+    email: user.email ?? null,
     role: user.role,
     sector_access: user.sector_access,
   };

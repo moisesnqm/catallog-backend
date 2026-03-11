@@ -47,11 +47,14 @@ interface TenantUserItem {
   id: string;              // UUID do registro na aplicação
   clerk_user_id: string;   // ID do usuário no Clerk (ex.: user_2abc...)
   tenant_id: string;       // UUID do tenant
+  email: string | null;    // E-mail quando disponível (preenchido no vínculo por e-mail); null para usuários criados via webhook ou antigos
   role: string;            // 'admin' | 'manager' | 'viewer'
   sector_access: string;   // 'all' | 'none' | 'financeiro' | 'pcp' | 'producao' | 'vendas' | 'projeto'
   created_at: string;     // ISO 8601
 }
 ```
+
+- **email:** opcional; preenchido quando o usuário foi vinculado via `POST /admin/users/link`. Para usuários criados pelo webhook ou antes dessa feature, vem `null`. O frontend pode exibir "—" ou outro placeholder quando `email` for `null`.
 
 **Erros**
 
@@ -90,6 +93,7 @@ interface LinkUserResponse {
   id: string;
   clerk_user_id: string;
   tenant_id: string;
+  email: string | null;   // E-mail informado no body (sempre preenchido ao vincular por e-mail)
   role: string;
   sector_access: string;
 }
@@ -181,6 +185,7 @@ interface TenantUserItem {
   id: string;
   clerk_user_id: string;
   tenant_id: string;
+  email: string | null;   // Opcional; null para usuários sem e-mail persistido
   role: Role;
   sector_access: SectorAccess;
   created_at: string;
@@ -204,7 +209,7 @@ interface UpdateUserRoleBody {
 
 1. **Página / seção “Usuários do tenant” (admin)**
    - Exibir apenas para usuários com role **admin** (usar dados de `GET /me`).
-   - Listar usuários com `GET /admin/users` (ex.: tabela ou cards com id, clerk_user_id, role, sector_access, data de criação).
+   - Listar usuários com `GET /admin/users` (ex.: tabela ou cards com **e-mail**, role, sector_access, data de criação). Na coluna **E-mail**, exibir o valor de `email` quando existir; quando for `null`, exibir "—".
    - Para cada linha: botão **Desvincular** que chama `DELETE /admin/users/by-clerk/:clerkUserId` (usar o `clerk_user_id` da linha). Confirmar em um modal antes de desvincular.
    - Opcional: botão **Alterar role/setor** que abre um formulário e chama `PATCH /admin/users/by-clerk/:clerkUserId`.
 
