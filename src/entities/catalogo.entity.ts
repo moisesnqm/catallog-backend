@@ -12,6 +12,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import type { Tenant } from './tenant.entity.js';
+import type { CatalogArea } from './catalog-area.entity.js';
 
 @Entity('catalogos')
 export class Catalogo {
@@ -24,6 +25,13 @@ export class Catalogo {
   @ManyToOne('Tenant', { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'tenant_id' })
   tenant!: Tenant;
+
+  @Column({ type: 'uuid', nullable: true })
+  area_id!: string | null;
+
+  @ManyToOne('CatalogArea', { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'area_id' })
+  area!: CatalogArea | null;
 
   @Column({ type: 'varchar', length: 255 })
   name!: string;

@@ -16,3 +16,10 @@ export const updateUserRoleBodySchema = z.object({
   { message: 'At least one of role or sector_access must be provided' }
 );
 export type UpdateUserRoleBody = z.infer<typeof updateUserRoleBodySchema>;
+
+export const linkUserBodySchema = z.object({
+  email: z.string().email(),
+  role: roleSchema.optional(),
+  sector_access: sectorAccessSchema.optional(),
+});
+export type LinkUserBody = z.infer<typeof linkUserBodySchema>;

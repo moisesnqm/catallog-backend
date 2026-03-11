@@ -13,6 +13,8 @@ function toResponse(
     id: string;
     name: string;
     sector: string | null;
+    area_id: string | null;
+    area?: { id: string; name: string } | null;
     file_name: string;
     file_path: string | null;
     file_url: string | null;
@@ -24,10 +26,13 @@ function toResponse(
 ): CatalogoResponse {
   const fileUrl =
     c.file_url ?? (baseUrl ? `${baseUrl.replace(/\/$/, '')}/catalogos/${c.id}/download` : null);
+  const area = c.area ?? null;
   return {
     id: c.id,
     name: c.name,
     sector: c.sector,
+    areaId: c.area_id ?? null,
+    area: area ? { id: area.id, name: area.name } : null,
     fileUrl,
     fileName: c.file_name || null,
     mimeType: c.mime_type || null,
@@ -58,6 +63,7 @@ export class ListCatalogosUseCaseImpl implements ListCatalogosUseCase {
       tenantId: auth.tenantId,
       sectorAccess,
       querySector: query.sector,
+      queryAreaId: query.areaId,
       queryText: query.q,
       queryName: query.name,
       queryMimeType: query.mimeType,

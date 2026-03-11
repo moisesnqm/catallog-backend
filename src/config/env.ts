@@ -24,6 +24,9 @@ const envSchema = z.object({
   /** Clerk webhook signing secret (required for POST /webhooks/clerk). */
   CLERK_WEBHOOK_SIGNING_SECRET: z.string().optional(),
 
+  /** Clerk Secret Key (sk_test_... or sk_live_...) for Backend API (e.g. link user by email). */
+  CLERK_SECRET_KEY: z.string().min(1).transform((s) => s.trim()).optional(),
+
   /** Default tenant UUID for users created via webhook (must exist in tenants table). */
   CLERK_WEBHOOK_DEFAULT_TENANT_ID: z.string().uuid().optional(),
 

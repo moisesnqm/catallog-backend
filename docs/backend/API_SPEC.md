@@ -158,6 +158,14 @@ The frontend uses this to know the current user's **role** and **tenantId** from
 
 ---
 
+### Admin — users (admin only)
+
+- **`GET /admin/users`** — List users of the current tenant. Response: array of `{ id, clerk_user_id, tenant_id, role, sector_access, created_at }`. Auth: admin.
+- **`POST /admin/users/link`** — Link a Clerk user to the current tenant by email. Body: `{ "email": "user@example.com", "role": "viewer", "sector_access": "all" }` (role/sector_access optional). Response: `201` with created user; `404` if no Clerk user with that email; `409` if already linked; `503` if `CLERK_SECRET_KEY` is not set.
+- **`DELETE /admin/users/by-clerk/:clerkUserId`** — Unlink the user from the current tenant (does not delete from Clerk). Response: `204` or `404` if user not in this tenant. Auth: admin.
+
+---
+
 ## TypeScript interfaces (for reference)
 
 ```ts

@@ -85,7 +85,10 @@ See `docs/backend/API_SPEC.md` and Swagger at `/docs`.
 
 To allow a user who signed in with Google (via Clerk) to use the API, they must exist in the `users` table with a `tenant_id` and `role`. An **admin** can then update their role or sector via:
 
+- **GET** `/admin/users` — list users of the current tenant (admin only).
+- **POST** `/admin/users/link` — body: `{ "email": "user@example.com", "role": "viewer", "sector_access": "all" }` to link a Clerk user by email to the tenant (admin only; requires `CLERK_SECRET_KEY`).
 - **PATCH** `/admin/users/by-clerk/:clerkUserId` — body: `{ "role": "manager", "sector_access": "vendas" }` (admin only, same tenant).
+- **DELETE** `/admin/users/by-clerk/:clerkUserId` — unlink user from current tenant (admin only).
 
 Full steps (create user in DB, get Clerk User ID, update role): [docs/backend/USERS_AND_ROLES.md](docs/backend/USERS_AND_ROLES.md).
 

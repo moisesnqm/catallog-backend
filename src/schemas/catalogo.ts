@@ -4,9 +4,12 @@
 
 import { z } from 'zod';
 import { SECTOR_VALUES } from './sector.js';
+import { areaSummarySchema } from './catalog-area.js';
 
 export const listCatalogosQuerySchema = z.object({
   sector: z.string().max(100).optional(),
+  /** Filter by catalog area ID (tenant-scoped). */
+  areaId: z.string().uuid().optional(),
   q: z.string().max(500).optional(),
   /** Partial match on catalog name (case-insensitive). */
   name: z.string().max(255).optional(),
@@ -25,10 +28,20 @@ export type ListCatalogosQuery = z.infer<typeof listCatalogosQuerySchema>;
 export const uploadSectorSchema = z.enum(SECTOR_VALUES).optional();
 export type UploadSector = z.infer<typeof uploadSectorSchema>;
 
+/** Body for PATCH /catalogos/:id — partial update. */
+export const updateCatalogoBodySchema = z.object({
+  name: z.string().min(1).max(255).trim().optional(),
+  sector: z.enum(SECTOR_VALUES).nullable().optional(),
+  areaId: z.string().uuid().nullable().optional(),
+});
+export type UpdateCatalogoBody = z.infer<typeof updateCatalogoBodySchema>;
+
 export const catalogoResponseSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   sector: z.string().nullable(),
+  areaId: z.string().uuid().nullable(),
+  area: areaSummarySchema.nullable(),
   fileUrl: z.string().nullable(),
   fileName: z.string().nullable(),
   mimeType: z.string().nullable(),

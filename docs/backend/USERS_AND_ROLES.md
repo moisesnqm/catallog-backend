@@ -41,7 +41,21 @@ Quando um usuário se registra ou loga pela primeira vez (ex.: com Google), o Cl
 
 Com isso, novos usuários (Google ou outro provider) passam a existir automaticamente no backend no tenant padrão. Um admin pode depois alterar role/setor via `PATCH /admin/users/by-clerk/:clerkUserId`.
 
-### 1.2 Criação manual (sem webhook)
+### 1.2 Vincular usuário por e-mail (admin)
+
+Um **admin** do tenant pode vincular um usuário que já existe no Clerk informando o **e-mail**. O backend usa a Clerk Backend API para buscar o usuário pelo e-mail e cria o registro na tabela `users` para o tenant do admin.
+
+**Requisitos:**
+
+- Variável de ambiente **`CLERK_SECRET_KEY`** (Secret Key do Clerk Dashboard → API Keys). Se não estiver definida, o endpoint retorna `503`.
+- O usuário deve existir no Clerk com aquele e-mail (ex.: já se cadastrou com Google).
+
+**Endpoint:** `POST /admin/users/link`
+
+- **Body:** `{ "email": "usuario@exemplo.com", "role": "viewer", "sector_access": "all" }` — `role` e `sector_access` são opcionais (default: `viewer`, `all`).
+- **Respostas:** `201` com o user criado; `404` se não existir usuário no Clerk com esse e-mail; `409` se o usuário já estiver vinculado a este tenant; `503` se `CLERK_SECRET_KEY` não estiver configurada.
+
+### 1.3 Criação manual (sem webhook)
 
 Se o webhook não estiver configurado, é preciso **criar o usuário manualmente** no banco.
 
@@ -103,6 +117,20 @@ Content-Type: application/json
 
 Só quem tem **role `admin`** pode chamar esse endpoint. O usuário alvo precisa estar no mesmo tenant do admin; caso contrário a API retorna 403.
 
+### Listar usuários do tenant
+
+**Endpoint:** `GET /admin/users`
+
+- Retorna a lista de usuários do tenant do admin (id, clerk_user_id, role, sector_access, created_at).
+- **Auth:** admin apenas.
+
+### Desvincular usuário do tenant
+
+**Endpoint:** `DELETE /admin/users/by-clerk/:clerkUserId`
+
+- Remove o vínculo do usuário com o **tenant atual** (não remove o usuário do Clerk). Só quem tem **role `admin`** pode chamar; o usuário alvo deve pertencer ao mesmo tenant.
+- **Respostas:** `204` se removido; `404` se o usuário não existir neste tenant.
+
 ### Exemplo (curl)
 
 ```bash
@@ -116,7 +144,8 @@ curl -X PATCH "http://localhost:3001/admin/users/by-clerk/user_2abc123" \
 
 ## Resumo: “Como atualizar a role de um usuário que logou com Google (Clerk)?”
 
-1. **Fazer o usuário existir no backend:** use o **webhook** (recomendado; configurar endpoint `/webhooks/clerk` e variáveis no .env) ou crie manualmente com um `INSERT` em `users` usando o **Clerk User ID** e o `tenant_id` desejado.
+1. **Fazer o usuário existir no backend:** use o **webhook** (recomendado), o **link por e-mail** (`POST /admin/users/link` com `CLERK_SECRET_KEY` configurada) ou crie manualmente com um `INSERT` em `users` usando o **Clerk User ID** e o `tenant_id` desejado.
 2. **Trocar a role/setor depois:** um **admin** chama `PATCH /admin/users/by-clerk/:clerkUserId` com `role` e/ou `sector_access` no body.
+3. **Listar e desvincular:** um **admin** pode listar usuários do tenant com `GET /admin/users` e desvincular com `DELETE /admin/users/by-clerk/:clerkUserId`.
 
 O Clerk User ID é o mesmo para login com Google ou qualquer outro provider; o que importa no backend é que esse ID exista em `users` e pertença a um tenant.

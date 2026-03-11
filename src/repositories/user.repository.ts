@@ -19,9 +19,12 @@ export interface CreateUserInput {
 
 export interface UserRepository {
   findByClerkUserId(clerkUserId: string): Promise<User | null>;
+  findByClerkUserIdAndTenant(clerkUserId: string, tenantId: string): Promise<User | null>;
+  findByTenant(tenantId: string): Promise<User[]>;
   updateRoleAndSector(user: User, input: UpdateUserRoleInput): Promise<User>;
   createUser(data: CreateUserInput): Promise<User>;
   deleteByClerkUserId(clerkUserId: string): Promise<void>;
+  deleteByTenantAndClerkUserId(tenantId: string, clerkUserId: string): Promise<boolean>;
 }
 
 export class UserRepositoryImpl implements UserRepository {
@@ -41,6 +44,28 @@ export class UserRepositoryImpl implements UserRepository {
       select: ['id', 'tenant_id', 'clerk_user_id', 'role', 'sector_access'],
     });
     return user ?? null;
+  }
+
+  /**
+   * Finds a user by Clerk user ID and tenant ID (for tenant-scoped operations).
+   */
+  async findByClerkUserIdAndTenant(clerkUserId: string, tenantId: string): Promise<User | null> {
+    const user = await this.repo.findOne({
+      where: { clerk_user_id: clerkUserId, tenant_id: tenantId },
+      select: ['id', 'tenant_id', 'clerk_user_id', 'role', 'sector_access'],
+    });
+    return user ?? null;
+  }
+
+  /**
+   * Lists all users belonging to the given tenant (for admin list).
+   */
+  async findByTenant(tenantId: string): Promise<User[]> {
+    return this.repo.find({
+      where: { tenant_id: tenantId },
+      select: ['id', 'tenant_id', 'clerk_user_id', 'role', 'sector_access', 'created_at'],
+      order: { created_at: 'ASC' },
+    });
   }
 
   /**
@@ -73,5 +98,13 @@ export class UserRepositoryImpl implements UserRepository {
    */
   async deleteByClerkUserId(clerkUserId: string): Promise<void> {
     await this.repo.delete({ clerk_user_id: clerkUserId });
+  }
+
+  /**
+   * Deletes the link of a user to a specific tenant (admin unlink). Returns true if a row was deleted.
+   */
+  async deleteByTenantAndClerkUserId(tenantId: string, clerkUserId: string): Promise<boolean> {
+    const result = await this.repo.delete({ tenant_id: tenantId, clerk_user_id: clerkUserId });
+    return (result.affected ?? 0) > 0;
   }
 }
